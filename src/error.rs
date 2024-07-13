@@ -1,17 +1,22 @@
-use thiserror::Error;
-use std::io;
 use serde_json::Error as SerdeError;
+use std::io;
+use thiserror::Error;
 
 pub type Result<T> = std::result::Result<T, crate::error::MSMQError>;
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum MSMQError {
+    #[error("{0}")]
     Custom(String),
+    #[error("Io Error: {0:?}")]
     Io(io::Error),
+    #[error("Serde Error: {0:?}")]
     Serde(SerdeError),
+    #[error("Couldn't find queue {0}")]
     QueueNotFound(String),
-    TransactionIdRequired,
+    #[error("Transaction could not be found")]
     TransactionNotFound,
+    #[error("Unknown command format")]
     CommandFormatError,
 }
 
@@ -32,18 +37,3 @@ impl From<SerdeError> for MSMQError {
         MSMQError::Serde(err)
     }
 }
-
-impl std::fmt::Display for MSMQError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            MSMQError::Custom(msg) => write!(f, "Custom error: {}", msg),
-            MSMQError::Io(err) => write!(f, "IO error: {}", err),
-            MSMQError::Serde(err) => write!(f, "Serde error: {}", err),
-            MSMQError::QueueNotFound(name) => write!(f, "Queue '{}' not found", name),
-            MSMQError::TransactionIdRequired => write!(f, "Transaction ID required for transactional queue"),
-            MSMQError::TransactionNotFound => write!(f, "Transaction not found"),
-            MSMQError::CommandFormatError => write!(f, "Invalid command format"),
-        }
-    }
-}
-
