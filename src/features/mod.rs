@@ -1,5 +1,5 @@
-mod journaled;
-pub use journaled::*;
+mod journal;
+pub use journal::*;
 
 mod transactional;
 pub use transactional::*;
@@ -7,5 +7,5 @@ pub use transactional::*;
 mod encrypted;
 pub use encrypted::*;
 
-mod dead_letter_queued;
-pub use dead_letter_queued::*;
+mod dead_letter;
+pub use dead_letter::*;

@@ -1,35 +1,25 @@
 use crate::features::*;
 
 #[derive(Default, Clone)]
-pub enum Priority {
-    High,
-    #[default]
-    Low,
-}
-
-#[derive(Clone)]
-pub struct Message<E = NonEncrypted> {
+pub struct Message<E = AnonymousEncryption> {
     content: String,
-    priority: Priority,
     state: std::marker::PhantomData<E>,
 }
 
-impl Message<Encrypted> {
-    pub fn decrypt(self) -> Message<NonEncrypted> {
+impl Message<BasicEncryption> {
+    pub fn decrypt(self) -> Message<AnonymousEncryption> {
         Message {
             content: self.content,
-            priority: self.priority,
-            state: std::marker::PhantomData::<NonEncrypted>,
+            state: std::marker::PhantomData,
         }
     }
 }
 
-impl Message<NonEncrypted> {
-    pub fn encrypt(self) -> Message<Encrypted> {
+impl Message<AnonymousEncryption> {
+    pub fn encrypt(self) -> Message<BasicEncryption> {
         Message {
             content: self.content,
-            priority: self.priority,
-            state: std::marker::PhantomData::<Encrypted>,
+            state: std::marker::PhantomData,
         }
     }
 }
@@ -38,14 +28,8 @@ impl<E> Message<E> {
     pub fn new(content: &str) -> Self {
         Self {
             content: content.to_string(),
-            priority: Priority::default(),
-            state: std::marker::PhantomData::<E>,
+            state: std::marker::PhantomData,
         }
-    }
-
-    pub fn with_priority(mut self, priority: Priority) -> Self {
-        self.priority = priority;
-        self
     }
 
     pub fn content(&self) -> &String {

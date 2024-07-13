@@ -7,24 +7,33 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-pub type BasicQueue<E> = Arc<Mutex<VecDeque<Message<E>>>>;
+pub type BasicQueue<T> = Arc<Mutex<VecDeque<T>>>;
 
-pub struct Queue<J = NonJournaled, T = NonTransactional, E = NonEncrypted, D = NonDeadletterQueued>
-{
+pub struct Queue<
+    J = EmptyJournal,
+    T = EmptyTransactionalQueue,
+    E = AnonymousEncryption,
+    D = EmptyDeadletterQueue,
+> {
     pub(crate) name: String,
-    pub(crate) queue: BasicQueue<E>,
-    pub(crate) journaled_queue: Option<BasicQueue<E>>,
-    pub(crate) security: Option<Security>,
+    pub(crate) queue: BasicQueue<Message<E>>,
+    pub(crate) journaled_queue: J,
+    pub(crate) dlq: D,
+    pub(crate) security: E,
     _marker: std::marker::PhantomData<(J, T, E, D)>,
 }
 
-impl<J, T, E, D> Queue<J, T, E, D> {
-    pub fn new(name: &str, security: Option<Security>) -> Self {
+impl<J, T, E, D> Queue<J, T, E, D>
+where
+    J: Journal,
+{
+    pub fn new(name: &str, j: J, d: D, e: E) -> Self {
         Self {
             name: name.to_string(),
             queue: Arc::new(Mutex::new(VecDeque::new())),
-            journaled_queue: None,
-            security,
+            journaled_queue: j,
+            dlq: d,
+            security: e,
             _marker: std::marker::PhantomData,
         }
     }
@@ -34,6 +43,7 @@ impl<J, T, E, D> Queue<J, T, E, D> {
             .lock()
             .map_err(|e| MSMQError::Custom(e.to_string()))?
             .push_back(message);
+
         Ok(())
     }
 
@@ -45,15 +55,23 @@ impl<J, T, E, D> Queue<J, T, E, D> {
         Ok(())
     }
 
-    pub fn join_group(&mut self, group: &MulticastGroup) -> Result<()> {
-        Ok(())
-    }
-
     pub fn receive(&mut self) -> Option<Message<E>> {
-        self.queue
+        let result = self
+            .queue
             .lock()
             .expect("Failed to lock the queue")
-            .pop_front()
+            .pop_front();
+
+        if let Some(ref message) = result {
+            self.journaled_queue
+                .append_journal_messages(message.content());
+        }
+
+        result
+    }
+
+    pub fn join_group(&mut self, group: &MulticastGroup) -> Result<()> {
+        Ok(())
     }
 
     pub fn message_count(&self) -> Result<usize> {
@@ -67,9 +85,8 @@ impl<J, T, E, D> Queue<J, T, E, D> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{message::Priority, queue_builder::QueueBuilder};
-
     use super::*;
+    use crate::queue_builder::QueueBuilder;
 
     #[test]
     fn test_send_message_to_queue() {
@@ -88,18 +105,5 @@ mod tests {
         let received = queue.receive();
         assert!(received.is_some());
         assert_eq!(received.unwrap().content(), "Test message");
-    }
-
-    #[test]
-    fn test_message_prioritization() {
-        let mut queue = QueueBuilder::new("test_queue").build();
-
-        let high_priority = Message::new("High priority").with_priority(Priority::High);
-        let low_priority = Message::new("Low priority").with_priority(Priority::Low);
-
-        queue.send(low_priority).unwrap();
-        queue.send(high_priority).unwrap();
-
-        assert_eq!(queue.receive().unwrap().content(), "High priority");
     }
 }

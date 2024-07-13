@@ -1,10 +1,10 @@
 use crate::Result;
 use crate::{message::Message, queue::Queue, transaction::Transaction};
 
-pub struct Transactional;
-pub struct NonTransactional;
+pub struct TransactionalQueue;
+pub struct EmptyTransactionalQueue;
 
-impl<J, E, D> Queue<J, Transactional, E, D> {
+impl<J, E, D> Queue<J, TransactionalQueue, E, D> {
     pub fn send_transactional(&self, message: Message, transaction: &Transaction) -> Result<()> {
         Ok(())
     }

@@ -9,4 +9,3 @@ pub mod security;
 pub mod transaction;
 
 use error::{MSMQError, Result};
-

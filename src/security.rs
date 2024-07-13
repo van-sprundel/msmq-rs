@@ -1,3 +1,5 @@
+use crate::features::BasicEncryption;
+
 pub struct Security {
     username: String,
     password: String,

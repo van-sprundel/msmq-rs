@@ -1,23 +1,41 @@
-use crate::{queue::Queue, Result};
+use crate::{
+    message::Message,
+    queue::{BasicQueue, Queue},
+    Result,
+};
 
-pub struct DeadletterQueued;
-pub struct NonDeadletterQueued;
+use super::Journal;
 
-impl<J, T, E> Queue<J, T, E, DeadletterQueued> {
+#[derive(Default)]
+pub struct DeadletterQueue<E>(BasicQueue<Message<E>>);
+
+#[derive(Default)]
+pub struct EmptyDeadletterQueue;
+
+impl<J, T, E> Queue<J, T, E, DeadletterQueue<E>>
+where
+    J: Journal,
+{
     pub fn move_to_dlq(&mut self) -> Result<()> {
+        if let Some(message) = self.receive() {
+            self.dlq
+                .0
+                .lock()
+                .expect("Couldnt lock queue")
+                .push_back(message);
+        }
+
         Ok(())
     }
 
     pub fn dlq_count(&self) -> usize {
-        0
+        self.dlq.0.lock().expect("Couldnt lock queue").len()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::{message::Message, queue_builder::QueueBuilder};
-
-    use super::*;
 
     #[test]
     fn test_dead_letter_queue() {

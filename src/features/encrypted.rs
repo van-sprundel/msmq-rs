@@ -1,12 +1,20 @@
 use crate::message::Message;
 use crate::queue::Queue;
+use crate::security::Security;
 use crate::{MSMQError, Result};
 
-pub struct Encrypted;
-pub struct NonEncrypted;
+pub trait EncryptionType {}
 
-impl<J, T, D> Queue<J, T, Encrypted, D> {
-    pub fn send_authenticated(&mut self, message: Message<Encrypted>) -> Result<()> {
+pub struct BasicEncryption(pub Security);
+
+#[derive(Default)]
+pub struct AnonymousEncryption;
+
+impl EncryptionType for BasicEncryption {}
+impl EncryptionType for AnonymousEncryption {}
+
+impl<J, T, D> Queue<J, T, BasicEncryption, D> {
+    pub fn send_authenticated(&mut self, message: Message<BasicEncryption>) -> Result<()> {
         self.queue
             .lock()
             .map_err(|e| MSMQError::Custom(e.to_string()))?
