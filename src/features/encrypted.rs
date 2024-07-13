@@ -3,17 +3,20 @@ use crate::queue::Queue;
 use crate::security::Security;
 use crate::{MSMQError, Result};
 
-pub trait EncryptionType {}
+use super::Journal;
 
+#[derive(Clone)]
 pub struct BasicEncryption(pub Security);
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct AnonymousEncryption;
 
-impl EncryptionType for BasicEncryption {}
-impl EncryptionType for AnonymousEncryption {}
-
-impl<J, T, D> Queue<J, T, BasicEncryption, D> {
+impl<J, T, D> Queue<J, T, BasicEncryption, D>
+where
+    J: Journal + Clone,
+    T: Clone,
+    D: Clone,
+{
     pub fn send_authenticated(&mut self, message: Message<BasicEncryption>) -> Result<()> {
         self.queue
             .lock()
@@ -26,8 +29,8 @@ impl<J, T, D> Queue<J, T, BasicEncryption, D> {
         &mut self,
         username: &str,
         password: &str,
-    ) -> Result<Option<Message>> {
-        Ok(None)
+    ) -> Option<Message<BasicEncryption>> {
+        self.receive()
     }
 }
 
@@ -44,10 +47,7 @@ mod tests {
         let message = Message::new("Secure message").encrypt();
         queue.send_authenticated(message).unwrap();
 
-        let received = queue
-            .receive_authenticated("user", "password")
-            .unwrap()
-            .unwrap();
+        let received = queue.receive_authenticated("user", "password").unwrap();
         assert_eq!(received.content(), "Secure message");
     }
 }

@@ -1,6 +1,6 @@
 use crate::{
     distributed_transaction::DistributedTransaction, error::MSMQError, features::*,
-    message::Message, multicast_group::MulticastGroup, security::Security, Result,
+    message::Message, multicast_group::MulticastGroup, Result,
 };
 use std::{
     collections::VecDeque,
@@ -9,12 +9,18 @@ use std::{
 
 pub type BasicQueue<T> = Arc<Mutex<VecDeque<T>>>;
 
+#[derive(Clone)]
 pub struct Queue<
     J = EmptyJournal,
     T = EmptyTransactionalQueue,
     E = AnonymousEncryption,
     D = EmptyDeadletterQueue,
-> {
+> where
+    J: Clone,
+    T: Clone,
+    E: Clone,
+    D: Clone,
+{
     pub(crate) name: String,
     pub(crate) queue: BasicQueue<Message<E>>,
     pub(crate) journaled_queue: J,
@@ -25,7 +31,10 @@ pub struct Queue<
 
 impl<J, T, E, D> Queue<J, T, E, D>
 where
-    J: Journal,
+    J: Journal + Clone,
+    T: Clone,
+    E: Clone,
+    D: Clone,
 {
     pub fn new(name: &str, j: J, d: D, e: E) -> Self {
         Self {

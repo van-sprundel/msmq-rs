@@ -1,3 +1,7 @@
+use std::{
+    sync::{Arc, Mutex},
+};
+
 use crate::{features::*, queue::Queue, security::Security};
 
 pub struct QueueBuilder<
@@ -25,12 +29,21 @@ impl
 
 impl<J, T, E, D> QueueBuilder<J, T, E, D>
 where
-    J: Default + Journal,
-    D: Default,
-    E: EncryptionType,
+    J: Default + Journal + Clone + 'static,
+    T: Clone + 'static,
+    E: Clone + 'static,
+    D: Default + Clone + 'static,
+    Queue<J, T, E, D>: Send + Sync,
 {
     pub fn build(self) -> Queue<J, T, E, D> {
-        Queue::<J, T, E, D>::new(&self.name, J::default(), D::default(), self.encryption)
+        let queue = Queue::new(&self.name, J::default(), D::default(), self.encryption);
+
+        QUEUE_REGISTRY
+            .lock()
+            .unwrap()
+            .insert(self.name.clone(), Arc::new(Mutex::new(queue.clone())));
+
+        queue
     }
 
     pub fn with_journaling(self) -> QueueBuilder<JournaledQueue<E>, T, E, D> {

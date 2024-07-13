@@ -1,5 +1,4 @@
-use crate::features::BasicEncryption;
-
+#[derive(Clone)]
 pub struct Security {
     username: String,
     password: String,

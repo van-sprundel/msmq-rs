@@ -6,15 +6,17 @@ use crate::{
 
 use super::Journal;
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct DeadletterQueue<E>(BasicQueue<Message<E>>);
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct EmptyDeadletterQueue;
 
 impl<J, T, E> Queue<J, T, E, DeadletterQueue<E>>
 where
-    J: Journal,
+    J: Journal + Clone,
+    T: Clone,
+    E: Clone,
 {
     pub fn move_to_dlq(&mut self) -> Result<()> {
         if let Some(message) = self.receive() {

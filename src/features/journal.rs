@@ -3,14 +3,14 @@ use crate::{
     queue::{BasicQueue, Queue},
 };
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct JournaledQueue<E>(pub BasicQueue<Message<E>>);
 
 pub trait Journal {
     fn append_journal_messages(&self, content: &str);
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct EmptyJournal;
 
 impl Journal for EmptyJournal {
@@ -27,7 +27,12 @@ impl<E> Journal for JournaledQueue<E> {
     }
 }
 
-impl<T, E, D> Queue<JournaledQueue<E>, T, E, D> {
+impl<T, E, D> Queue<JournaledQueue<E>, T, E, D>
+where
+    T: Clone,
+    E: Clone,
+    D: Clone,
+{
     pub fn journal_length(&self) -> usize {
         self.journaled_queue
             .0
