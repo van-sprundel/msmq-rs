@@ -1,12 +1,13 @@
 use lazy_static::lazy_static;
 
+use super::{DeadLetterFeature, EncryptFeature, JournalFeature};
 use crate::Result;
 use crate::{message::Message, queue::Queue, transaction::Transaction};
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-use super::Journal;
+pub trait TransactionalFeature: Send + Sync {}
 
 #[derive(Default, Clone)]
 pub struct TransactionalQueue;
@@ -14,11 +15,14 @@ pub struct TransactionalQueue;
 #[derive(Default, Clone)]
 pub struct EmptyTransactionalQueue;
 
+impl TransactionalFeature for TransactionalQueue {}
+impl TransactionalFeature for EmptyTransactionalQueue {}
+
 impl<J, E, D> Queue<J, TransactionalQueue, E, D>
 where
-    J: Journal + Clone + Send + Sync,
-    E: Clone + Send + Sync,
-    D: Clone + Send + Sync,
+    J: JournalFeature,
+    E: EncryptFeature,
+    D: DeadLetterFeature,
 {
     pub fn send_transactional(&self, message: Message<E>, txn: &Transaction<E>) -> Result<()> {
         txn.operations

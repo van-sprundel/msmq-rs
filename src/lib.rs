@@ -173,6 +173,7 @@ mod tests {
                 },
             )
         });
+        thread::sleep(Duration::from_millis(100)); // Give the server time
 
         let address_clone = address.clone();
         let client2 = thread::spawn(move || {
@@ -183,12 +184,15 @@ mod tests {
                 },
             )
         });
+        thread::sleep(Duration::from_millis(100)); // Give the server time
 
         let address_clone = address.clone();
         let client3 = thread::spawn(move || send_message(&address_clone, ReceivedMessage::Dequeue));
+        thread::sleep(Duration::from_millis(100)); // Give the server time
 
         let address_clone = address.clone();
         let client4 = thread::spawn(move || send_message(&address_clone, ReceivedMessage::Dequeue));
+        thread::sleep(Duration::from_millis(100)); // Give the server time
 
         assert!(matches!(client1.join().unwrap(), Response::Success));
         assert!(matches!(client2.join().unwrap(), Response::Success));

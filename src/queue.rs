@@ -7,7 +7,10 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-pub trait QueueOps<E>: Send + Sync {
+pub trait QueueOps<E>: Send + Sync
+where
+    E: EncryptFeature,
+{
     fn send(&mut self, message: Message<E>) -> Result<()>;
     fn send_distributed_transactional(
         &mut self,
@@ -27,7 +30,10 @@ pub struct Queue<
     T = EmptyTransactionalQueue,
     E = AnonymousEncryption,
     D = EmptyDeadletterQueue,
-> {
+> where
+    E: EncryptFeature,
+    D: DeadLetterFeature,
+{
     pub(crate) name: String,
     pub(crate) queue: BasicQueue<Message<E>>,
     pub(crate) journaled_queue: J,
@@ -36,7 +42,11 @@ pub struct Queue<
     _marker: std::marker::PhantomData<(J, T, E, D)>,
 }
 
-impl<J, T, E, D> Queue<J, T, E, D> {
+impl<J, T, E, D> Queue<J, T, E, D>
+where
+    E: EncryptFeature,
+    D: DeadLetterFeature,
+{
     pub fn new(name: &str, j: J, e: E, d: D) -> Self {
         Self {
             name: name.to_string(),
@@ -51,10 +61,10 @@ impl<J, T, E, D> Queue<J, T, E, D> {
 
 impl<J, T, E, D> QueueOps<E> for Queue<J, T, E, D>
 where
-    J: Journal + Send + Sync,
-    T: Send + Sync,
-    E: Send + Sync,
-    D: Send + Sync,
+    J: JournalFeature,
+    T: TransactionalFeature,
+    E: EncryptFeature,
+    D: DeadLetterFeature,
 {
     fn send(&mut self, message: Message<E>) -> Result<()> {
         self.queue

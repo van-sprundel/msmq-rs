@@ -3,23 +3,28 @@ use crate::{
     queue::{BasicQueue, Queue},
 };
 
+use super::{DeadLetterFeature, EncryptFeature, TransactionalFeature};
+
 #[derive(Default, Clone)]
 pub struct JournaledQueue<E>(pub BasicQueue<Message<E>>);
 
-pub trait Journal {
+pub trait JournalFeature: Send + Sync {
     fn append_journal_messages(&self, content: &str);
 }
 
 #[derive(Default, Clone)]
 pub struct EmptyJournal;
 
-impl Journal for EmptyJournal {
+impl JournalFeature for EmptyJournal {
     fn append_journal_messages(&self, _message: &str) {
         // no-op
     }
 }
 
-impl<E> Journal for JournaledQueue<E> {
+impl<E> JournalFeature for JournaledQueue<E>
+where
+    E: EncryptFeature,
+{
     fn append_journal_messages(&self, content: &str) {
         let mut queue = self.0.lock().expect("Couldn't lock queue");
         queue.push_back(Message::new(&format!("Sent: {}", content)));
@@ -29,9 +34,9 @@ impl<E> Journal for JournaledQueue<E> {
 
 impl<T, E, D> Queue<JournaledQueue<E>, T, E, D>
 where
-    T: Send + Sync + Clone,
-    E: Send + Sync + Clone,
-    D: Send + Sync + Clone,
+    T: TransactionalFeature,
+    E: EncryptFeature,
+    D: DeadLetterFeature,
 {
     pub fn journal_length(&self) -> usize {
         self.journaled_queue

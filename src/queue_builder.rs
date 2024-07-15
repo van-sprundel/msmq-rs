@@ -37,11 +37,11 @@ impl
 
 impl<J, T, E, D> QueueBuilder<J, T, E, D>
 where
-    J: Default + Journal + Send + Sync + 'static + Clone,
-    T: Send + Sync + 'static + Clone,
-    E: Send + Sync + 'static + Clone,
-    D: Default + Send + Sync + 'static + Clone,
-    Queue<J, T, E, D>: QueueOps<E> + Clone,
+    J: Default + JournalFeature + Clone,
+    T: TransactionalFeature,
+    E: EncryptFeature + Clone,
+    D: Default + DeadLetterFeature + Clone,
+    Queue<J, T, E, D>: QueueOps<E>,
 {
     pub fn build(self) -> Queue<J, T, E, D> {
         let j = J::default();

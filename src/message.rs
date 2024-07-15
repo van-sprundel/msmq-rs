@@ -1,7 +1,7 @@
 use crate::features::*;
 
 #[derive(Default, Clone)]
-pub struct Message<E = AnonymousEncryption> {
+pub struct Message<E: ?Sized = dyn EncryptFeature> {
     content: String,
     state: std::marker::PhantomData<E>,
 }
@@ -24,7 +24,7 @@ impl Message<AnonymousEncryption> {
     }
 }
 
-impl<E> Message<E> {
+impl<E: ?Sized> Message<E> {
     pub fn new(content: &str) -> Self {
         Self {
             content: content.to_string(),

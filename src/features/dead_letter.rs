@@ -1,4 +1,6 @@
-use super::Journal;
+use super::{
+    AnonymousEncryption, BasicEncryption, EncryptFeature, JournalFeature, TransactionalFeature,
+};
 use crate::queue::QueueOps;
 use crate::{
     message::Message,
@@ -6,17 +8,22 @@ use crate::{
     Result,
 };
 
+pub trait DeadLetterFeature: Send + Sync {}
+
 #[derive(Default, Clone)]
 pub struct DeadletterQueue<E>(BasicQueue<Message<E>>);
 
 #[derive(Default, Clone)]
 pub struct EmptyDeadletterQueue;
 
+impl<E: EncryptFeature> DeadLetterFeature for DeadletterQueue<E> {}
+impl DeadLetterFeature for EmptyDeadletterQueue {}
+
 impl<J, T, E> Queue<J, T, E, DeadletterQueue<E>>
 where
-    J: Journal + Clone + Send + Sync,
-    T: Clone + Send + Sync,
-    E: Clone + Send + Sync,
+    J: JournalFeature,
+    T: TransactionalFeature,
+    E: EncryptFeature,
 {
     pub fn move_to_dlq(&mut self) -> Result<()> {
         if let Some(message) = self.receive() {
