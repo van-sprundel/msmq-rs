@@ -7,6 +7,18 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+pub trait QueueOps<E>: Send + Sync {
+    fn send(&mut self, message: Message<E>) -> Result<()>;
+    fn send_distributed_transactional(
+        &mut self,
+        message: Message<E>,
+        distributed_transaction: &DistributedTransaction,
+    ) -> Result<()>;
+    fn receive(&mut self) -> Option<Message<E>>;
+    fn join_group(&mut self, group: &MulticastGroup) -> Result<()>;
+    fn message_count(&self) -> Result<usize>;
+}
+
 pub type BasicQueue<T> = Arc<Mutex<VecDeque<T>>>;
 
 #[derive(Clone)]
@@ -15,12 +27,7 @@ pub struct Queue<
     T = EmptyTransactionalQueue,
     E = AnonymousEncryption,
     D = EmptyDeadletterQueue,
-> where
-    J: Clone,
-    T: Clone,
-    E: Clone,
-    D: Clone,
-{
+> {
     pub(crate) name: String,
     pub(crate) queue: BasicQueue<Message<E>>,
     pub(crate) journaled_queue: J,
@@ -29,14 +36,8 @@ pub struct Queue<
     _marker: std::marker::PhantomData<(J, T, E, D)>,
 }
 
-impl<J, T, E, D> Queue<J, T, E, D>
-where
-    J: Journal + Clone,
-    T: Clone,
-    E: Clone,
-    D: Clone,
-{
-    pub fn new(name: &str, j: J, d: D, e: E) -> Self {
+impl<J, T, E, D> Queue<J, T, E, D> {
+    pub fn new(name: &str, j: J, e: E, d: D) -> Self {
         Self {
             name: name.to_string(),
             queue: Arc::new(Mutex::new(VecDeque::new())),
@@ -46,8 +47,16 @@ where
             _marker: std::marker::PhantomData,
         }
     }
+}
 
-    pub fn send(&mut self, message: Message<E>) -> Result<()> {
+impl<J, T, E, D> QueueOps<E> for Queue<J, T, E, D>
+where
+    J: Journal + Send + Sync,
+    T: Send + Sync,
+    E: Send + Sync,
+    D: Send + Sync,
+{
+    fn send(&mut self, message: Message<E>) -> Result<()> {
         self.queue
             .lock()
             .map_err(|e| MSMQError::Custom(e.to_string()))?
@@ -56,7 +65,7 @@ where
         Ok(())
     }
 
-    pub fn send_distributed_transactional(
+    fn send_distributed_transactional(
         &mut self,
         message: Message<E>,
         distributed_transaction: &DistributedTransaction,
@@ -64,7 +73,7 @@ where
         Ok(())
     }
 
-    pub fn receive(&mut self) -> Option<Message<E>> {
+    fn receive(&mut self) -> Option<Message<E>> {
         let result = self
             .queue
             .lock()
@@ -79,11 +88,11 @@ where
         result
     }
 
-    pub fn join_group(&mut self, group: &MulticastGroup) -> Result<()> {
+    fn join_group(&mut self, group: &MulticastGroup) -> Result<()> {
         Ok(())
     }
 
-    pub fn message_count(&self) -> Result<usize> {
+    fn message_count(&self) -> Result<usize> {
         Ok(self
             .queue
             .lock()

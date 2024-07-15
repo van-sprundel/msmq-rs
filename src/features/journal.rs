@@ -22,16 +22,16 @@ impl Journal for EmptyJournal {
 impl<E> Journal for JournaledQueue<E> {
     fn append_journal_messages(&self, content: &str) {
         let mut queue = self.0.lock().expect("Couldn't lock queue");
-        queue.push_back(Message::new(&*format!("Sent: {}", content)));
-        queue.push_back(Message::new(&*format!("Received: {}", content)));
+        queue.push_back(Message::new(&format!("Sent: {}", content)));
+        queue.push_back(Message::new(&format!("Received: {}", content)));
     }
 }
 
 impl<T, E, D> Queue<JournaledQueue<E>, T, E, D>
 where
-    T: Clone,
-    E: Clone,
-    D: Clone,
+    T: Send + Sync + Clone,
+    E: Send + Sync + Clone,
+    D: Send + Sync + Clone,
 {
     pub fn journal_length(&self) -> usize {
         self.journaled_queue
@@ -45,6 +45,8 @@ where
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use crate::queue::QueueOps;
     use crate::{message::Message, queue_builder::QueueBuilder};
 
     #[test]

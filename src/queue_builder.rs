@@ -1,8 +1,16 @@
 use std::{
+    any::Any,
+    collections::HashMap,
     sync::{Arc, Mutex},
 };
 
-use crate::{features::*, queue::Queue, security::Security};
+use lazy_static::lazy_static;
+
+use crate::{
+    features::*,
+    queue::{Queue, QueueOps},
+    security::Security,
+};
 
 pub struct QueueBuilder<
     J = EmptyJournal,
@@ -29,19 +37,20 @@ impl
 
 impl<J, T, E, D> QueueBuilder<J, T, E, D>
 where
-    J: Default + Journal + Clone + 'static,
-    T: Clone + 'static,
-    E: Clone + 'static,
-    D: Default + Clone + 'static,
-    Queue<J, T, E, D>: Send + Sync,
+    J: Default + Journal + Send + Sync + 'static + Clone,
+    T: Send + Sync + 'static + Clone,
+    E: Send + Sync + 'static + Clone,
+    D: Default + Send + Sync + 'static + Clone,
+    Queue<J, T, E, D>: QueueOps<E> + Clone,
 {
     pub fn build(self) -> Queue<J, T, E, D> {
-        let queue = Queue::new(&self.name, J::default(), D::default(), self.encryption);
+        let j = J::default();
+        let e = self.encryption;
+        let d = D::default();
 
-        QUEUE_REGISTRY
-            .lock()
-            .unwrap()
-            .insert(self.name.clone(), Arc::new(Mutex::new(queue.clone())));
+        let queue = Queue::new(&self.name, j.clone(), e.clone(), d.clone());
+
+        //TODO: store queue somewhere(?)
 
         queue
     }

@@ -1,9 +1,9 @@
+use super::Journal;
 use crate::message::Message;
 use crate::queue::Queue;
+use crate::queue::QueueOps;
 use crate::security::Security;
 use crate::{MSMQError, Result};
-
-use super::Journal;
 
 #[derive(Clone)]
 pub struct BasicEncryption(pub Security);
@@ -13,9 +13,9 @@ pub struct AnonymousEncryption;
 
 impl<J, T, D> Queue<J, T, BasicEncryption, D>
 where
-    J: Journal + Clone,
-    T: Clone,
-    D: Clone,
+    J: Journal + Clone + Send + Sync,
+    T: Clone + Send + Sync,
+    D: Clone + Send + Sync,
 {
     pub fn send_authenticated(&mut self, message: Message<BasicEncryption>) -> Result<()> {
         self.queue

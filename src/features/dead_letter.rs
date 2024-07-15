@@ -1,10 +1,10 @@
+use super::Journal;
+use crate::queue::QueueOps;
 use crate::{
     message::Message,
     queue::{BasicQueue, Queue},
     Result,
 };
-
-use super::Journal;
 
 #[derive(Default, Clone)]
 pub struct DeadletterQueue<E>(BasicQueue<Message<E>>);
@@ -14,9 +14,9 @@ pub struct EmptyDeadletterQueue;
 
 impl<J, T, E> Queue<J, T, E, DeadletterQueue<E>>
 where
-    J: Journal + Clone,
-    T: Clone,
-    E: Clone,
+    J: Journal + Clone + Send + Sync,
+    T: Clone + Send + Sync,
+    E: Clone + Send + Sync,
 {
     pub fn move_to_dlq(&mut self) -> Result<()> {
         if let Some(message) = self.receive() {
@@ -37,6 +37,7 @@ where
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::{message::Message, queue_builder::QueueBuilder};
 
     #[test]
